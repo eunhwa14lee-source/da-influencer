@@ -750,7 +750,7 @@
             document.getElementById(`stat-impressions-${subsName}`).textContent = formatNumber(totalImpressions);
             document.getElementById(`stat-engagements-${subsName}`).textContent = formatNumber(totalEngagements);
             document.getElementById(`stat-er-${subsName}`).textContent = formatPercent(avgER) + '%';
-
+            
             // Top Impression
             const topImpression = [...data]
                 .sort((a, b) => b.impression - a.impression)
