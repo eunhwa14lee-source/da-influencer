@@ -650,10 +650,12 @@
 
             const ctx1 = document.getElementById('overviewInfluencersChart')?.getContext('2d');
             if (ctx1) {
-                const chartInstance = Chart.helpers.ChartHelpers?.instances?.find(c => c.canvas === document.getElementById('overviewInfluencersChart'));
-                if (chartInstance) chartInstance.destroy();
+                // 기존 차트 파괴
+                if (window.overviewInfluencersChartInstance) {
+                    window.overviewInfluencersChartInstance.destroy();
+                }
 
-                new Chart(ctx1, {
+                window.overviewInfluencersChartInstance = new Chart(ctx1, {
                     type: 'bar',
                     data: {
                         labels: Object.keys(sortedInfluencerSubs),
@@ -688,10 +690,12 @@
 
             const ctx2 = document.getElementById('overviewContentChart')?.getContext('2d');
             if (ctx2) {
-                const chartInstance = Chart.helpers.ChartHelpers?.instances?.find(c => c.canvas === document.getElementById('overviewContentChart'));
-                if (chartInstance) chartInstance.destroy();
+                // 기존 차트 파괴
+                if (window.overviewContentChartInstance) {
+                    window.overviewContentChartInstance.destroy();
+                }
 
-                new Chart(ctx2, {
+                window.overviewContentChartInstance = new Chart(ctx2, {
                     type: 'bar',
                     data: {
                         labels: Object.keys(sortedContentSubs),
@@ -811,6 +815,10 @@
         window.addEventListener('load', () => {
             initTabs();
             updateConnectionStatus();
+            // 초기 로드 시 Overview 표시
+            setTimeout(() => {
+                loadOverview();
+            }, 500);
         });
     </script>
 </body>
