@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Samsung Influencer Marketing Dashboard - Real-time</title>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database.compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <style>
         * {
@@ -400,7 +400,7 @@
 
     <script>
         // ===== FIREBASE CONFIGURATION =====
-        // 아래 값들을 당신의 Firebase 프로젝트 정보로 교체하세요
+    document.addEventListener('DOMContentLoaded', function() {
         const firebaseConfig = {
           apiKey: "AIzaSyBltxdfVfNzoWU9ZjRPD_ZA9qX6BdRmd90",
           authDomain: "da-influencer.firebaseapp.com",
@@ -793,6 +793,7 @@
             initTabs();
             updateConnectionStatus();
         });
+    });
     </script>
 </body>
 </html>
