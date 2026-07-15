@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Samsung Influencer Marketing Dashboard - Real-time</title>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .tab-button {
+            background: white;
+            border: 2px solid #ddd;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+
+        .tab-button.active {
+            background: #1428a0;
+            color: white;
+            border-color: #1428a0;
+            box-shadow: 0 4px 12px rgba(20, 40, 160, 0.3);
+        }
+
+        .tab-button:hover {
+            border-color: #1428a0;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            color: #1428a0;
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 16px;
+        }
+
+        .connection-status {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 8px 16px;
+            background: #4caf50;
+            color: white;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .connection-status.disconnected {
+            background: #f44336;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border-left: 5px solid #1428a0;
+        }
+
+        .stat-card.green {
+            border-left-color: #4caf50;
+        }
+
+        .stat-card.orange {
+            border-left-color: #ff9800;
+        }
+
+        .stat-card.blue {
+            border-left-color: #2196f3;
+        }
+
+        .stat-label {
+            color: #999;
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            letter-spacing: 1px;
+        }
+
+        .stat-value {
+            font-size: 36px;
+            font-weight: 700;
+            color: #1428a0;
+            margin-bottom: 8px;
+        }
+
+        .stat-card.green .stat-value {
+            color: #4caf50;
+        }
+
+        .stat-card.orange .stat-value {
+            color: #ff9800;
+        }
+
+        .stat-card.blue .stat-value {
+            color: #2196f3;
+        }
+
+        .stat-subtitle {
+            font-size: 13px;
+            color: #999;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .chart-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .chart-card h3 {
+            color: #1428a0;
+            font-size: 18px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e8eaf6;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+
+        .table-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        .table-card h3 {
+            color: #1428a0;
+            font-size: 18px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e8eaf6;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        thead {
+            background-color: #f5f5f5;
+        }
+
+        th {
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        tbody tr:hover {
+            background-color: #f9f9f9;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-instagram {
+            background-color: #fce4ec;
+            color: #c2185b;
+        }
+
+        .badge-youtube {
+            background-color: #ffebee;
+            color: #d32f2f;
+        }
+
+        .badge-tiktok {
+            background-color: #f3e5f5;
+            color: #7b1fa2;
+        }
+
+        .section-title {
+            color: white;
+            font-size: 24px;
+            font-weight: 700;
+            margin: 40px 0 20px 0;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .footer {
+            text-align: center;
+            color: rgba(255,255,255,0.7);
+            margin-top: 40px;
+            padding: 20px;
+            font-size: 13px;
+        }
+
+        .sync-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            background: #4caf50;
+            color: white;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .sync-badge.updating {
+            background: #ff9800;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        @media (max-width: 1200px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .header h1 {
+                font-size: 24px;
+            }
+
+            .stat-value {
+                font-size: 28px;
+            }
+
+            table {
+                font-size: 12px;
+            }
+
+            th, td {
+                padding: 8px 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Tabs Navigation -->
+        <div class="tabs" id="tabsContainer"></div>
+
+        <!-- Overview Tab -->
+        <div class="tab-content active" id="overviewTab">
+            <div class="header">
+                <h1>📊 Samsung Influencer Marketing - Real-time Dashboard</h1>
+                <p>Live Data Sync from All Subs <span class="sync-badge" id="syncBadge">🔄 Connected</span></p>
+                <div class="connection-status" id="connectionStatus">🟢 Connected</div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Total Subs</div>
+                    <div class="stat-value" id="totalSubs">-</div>
+                </div>
+                <div class="stat-card green">
+                    <div class="stat-label">Total Influencers</div>
+                    <div class="stat-value" id="overviewTotalInfluencers">-</div>
+                </div>
+                <div class="stat-card orange">
+                    <div class="stat-label">Total Content</div>
+                    <div class="stat-value" id="overviewTotalContent">-</div>
+                </div>
+                <div class="stat-card blue">
+                    <div class="stat-label">Total Impressions</div>
+                    <div class="stat-value" id="overviewTotalImpressions">-</div>
+                </div>
+                <div class="stat-card orange">
+                    <div class="stat-label">Total Engagements</div>
+                    <div class="stat-value" id="overviewTotalEngagements">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Average ER</div>
+                    <div class="stat-value" id="overviewAvgER">-</div>
+                </div>
+            </div>
+
+            <h2 class="section-title">📈 Performance Analysis</h2>
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <h3>Influencers by Subs</h3>
+                    <div class="chart-container">
+                        <canvas id="overviewInfluencersChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h3>Content Count by Subs</h3>
+                    <div class="chart-container">
+                        <canvas id="overviewContentChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-card">
+                <h3>Top Performers by Subs</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Subs</th>
+                            <th>Top Influencer</th>
+                            <th>Followers</th>
+                            <th>Total Impressions</th>
+                            <th>Avg Impression per Content</th>
+                            <th>Average ER</th>
+                        </tr>
+                    </thead>
+                    <tbody id="overviewSubsTable"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Subs Tabs (will be generated) -->
+        <div id="divisionTabs"></div>
+    </div>
+
+    <div class="footer">
+        <p>© 2025 Samsung Electronics. All rights reserved. | Real-time Dashboard v1.0</p>
+    </div>
+
+    <script>
+        // ===== FIREBASE CONFIGURATION =====
+        // 아래 값들을 당신의 Firebase 프로젝트 정보로 교체하세요
+        const firebaseConfig = {
+          apiKey: "AIzaSyBltxdfVfNzoWU9ZjRPD_ZA9qX6BdRmd90",
+          authDomain: "da-influencer.firebaseapp.com",
+          databaseURL: "https://da-influencer-default-rtdb.asia-southeast1.firebasedatabase.app",
+          projectId: "da-influencer",
+          storageBucket: "da-influencer.firebasestorage.app",
+          messagingSenderId: "850189140596",
+          appId: "1:850189140596:web:1f89afe0c4f326bb298721"
+        };
+
+        // Firebase 초기화
+        let db = null;
+        let isConnected = false;
+        let divisionsData = {
+            'GBM': [],
+            'SEA': [],
+            'SEUK': []
+        };
+
+        try {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.database();
+            
+            // 연결 상태 감시
+            db.ref('.info/connected').on('value', (snapshot) => {
+                isConnected = snapshot.val();
+                updateConnectionStatus();
+            });
+
+            // Firebase에서 데이터 실시간 로드
+            Object.keys(divisionsData).forEach(subs => {
+                db.ref(`influencer_data/${subs}`).on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    divisionsData[subs] = data ? Object.values(data) : [];
+                    updateAllCharts();
+                });
+            });
+        } catch (error) {
+            console.error('Firebase initialization error:', error);
+        }
+
+        function updateConnectionStatus() {
+            const statusEl = document.getElementById('connectionStatus');
+            const syncBadge = document.getElementById('syncBadge');
+
+            if (isConnected) {
+                statusEl.textContent = '🟢 Connected - Real-time Sync Active';
+                statusEl.className = 'connection-status';
+                syncBadge.textContent = '🔄 Connected';
+                syncBadge.className = 'sync-badge';
+            } else {
+                statusEl.textContent = '🔴 Disconnected - Attempting to reconnect...';
+                statusEl.className = 'connection-status disconnected';
+                syncBadge.textContent = '⚠️ Disconnected';
+                syncBadge.className = 'sync-badge disconnected';
+            }
+        }
+
+        function formatNumber(num) {
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+            return Math.round(num).toString();
+        }
+
+        function formatPercent(num) {
+            return (num * 100).toFixed(2);
+        }
+
+        function updateAllCharts() {
+            loadOverview();
+            Object.keys(divisionsData).forEach(subs => {
+                const tabExists = document.getElementById(`tab-${subs}`);
+                if (tabExists) {
+                    loadSub(subs);
+                }
+            });
+        }
+
+        function initTabs() {
+            const tabsContainer = document.getElementById('tabsContainer');
+            const divisionTabs = document.getElementById('divisionTabs');
+
+            // Overview button
+            const overviewBtn = document.createElement('button');
+            overviewBtn.className = 'tab-button active';
+            overviewBtn.textContent = '🌍 Overview';
+            overviewBtn.onclick = () => switchTab('overview');
+            tabsContainer.appendChild(overviewBtn);
+
+            // Subs buttons
+            Object.keys(divisionsData).forEach(subs => {
+                const btn = document.createElement('button');
+                btn.className = 'tab-button';
+                btn.textContent = subs;
+                btn.onclick = () => switchTab(subs);
+                tabsContainer.appendChild(btn);
+
+                // Create subs tab content
+                const tabDiv = document.createElement('div');
+                tabDiv.className = 'tab-content';
+                tabDiv.id = `tab-${subs}`;
+                tabDiv.innerHTML = `
+                    <div class="header">
+                        <h1>📊 ${subs} - Performance Dashboard</h1>
+                        <p>Real-time Data Sync</p>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-label">Total Influencers</div>
+                            <div class="stat-value" id="stat-influencers-${subs}">-</div>
+                        </div>
+                        <div class="stat-card green">
+                            <div class="stat-label">Total Content</div>
+                            <div class="stat-value" id="stat-content-${subs}">-</div>
+                        </div>
+                        <div class="stat-card blue">
+                            <div class="stat-label">Total Impressions</div>
+                            <div class="stat-value" id="stat-impressions-${subs}">-</div>
+                        </div>
+                        <div class="stat-card orange">
+                            <div class="stat-label">Total Engagements</div>
+                            <div class="stat-value" id="stat-engagements-${subs}">-</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Average ER</div>
+                            <div class="stat-value" id="stat-er-${subs}">-</div>
+                        </div>
+                    </div>
+
+                    <h2 class="section-title">🏆 Best Performance Content</h2>
+                    <div class="charts-grid">
+                        <div class="table-card" style="grid-column: span 2;">
+                            <h3>Top 5 by Impressions</h3>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Rank</th>
+                                        <th>Influencer</th>
+                                        <th>Product</th>
+                                        <th>Platform</th>
+                                        <th>Impressions</th>
+                                        <th>Engagement</th>
+                                        <th>ER</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="top-impression-${subs}"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="charts-grid">
+                        <div class="table-card" style="grid-column: span 2;">
+                            <h3>Top 5 by Engagement Rate</h3>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Rank</th>
+                                        <th>Influencer</th>
+                                        <th>Product</th>
+                                        <th>Platform</th>
+                                        <th>Impressions</th>
+                                        <th>Engagement</th>
+                                        <th>ER</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="top-er-${subs}"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+                divisionTabs.appendChild(tabDiv);
+            });
+
+            loadOverview();
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            if (tabName === 'overview') {
+                document.getElementById('overviewTab').classList.add('active');
+                document.querySelector('.tab-button').classList.add('active');
+                loadOverview();
+            } else {
+                document.getElementById(`tab-${tabName}`).classList.add('active');
+                event.target.classList.add('active');
+                loadSub(tabName);
+            }
+        }
+
+        function loadOverview() {
+            let allData = [];
+            Object.values(divisionsData).forEach(data => {
+                allData = allData.concat(data);
+            });
+
+            const uniqueInfluencers = new Set(allData.map(d => d.name)).size;
+            const totalContent = allData.length;
+            const totalImpressions = allData.reduce((sum, d) => sum + d.impression, 0);
+            const totalEngagements = allData.reduce((sum, d) => sum + d.engagement, 0);
+            const avgER = totalImpressions > 0 ? (totalEngagements / totalImpressions) : 0;
+
+            document.getElementById('totalSubs').textContent = Object.keys(divisionsData).length;
+            document.getElementById('overviewTotalInfluencers').textContent = uniqueInfluencers;
+            document.getElementById('overviewTotalContent').textContent = totalContent;
+            document.getElementById('overviewTotalImpressions').textContent = formatNumber(totalImpressions);
+            document.getElementById('overviewTotalEngagements').textContent = formatNumber(totalEngagements);
+            document.getElementById('overviewAvgER').textContent = formatPercent(avgER) + '%';
+
+            // Influencers by Subs
+            const influencersBySubs = {};
+            Object.entries(divisionsData).forEach(([subs, data]) => {
+                influencersBySubs[subs] = new Set(data.map(d => d.name)).size;
+            });
+
+            const sortedInfluencerSubs = Object.entries(influencersBySubs)
+                .sort((a, b) => b[1] - a[1])
+                .reduce((obj, [key, val]) => {
+                    obj[key] = val;
+                    return obj;
+                }, {});
+
+            const ctx1 = document.getElementById('overviewInfluencersChart')?.getContext('2d');
+            if (ctx1) {
+                const chartInstance = Chart.helpers.ChartHelpers?.instances?.find(c => c.canvas === document.getElementById('overviewInfluencersChart'));
+                if (chartInstance) chartInstance.destroy();
+
+                new Chart(ctx1, {
+                    type: 'bar',
+                    data: {
+                        labels: Object.keys(sortedInfluencerSubs),
+                        datasets: [{
+                            label: 'Number of Influencers',
+                            data: Object.values(sortedInfluencerSubs),
+                            backgroundColor: ['#1428a0', '#ff9800', '#4caf50']
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: { x: { beginAtZero: true } },
+                        plugins: { legend: { display: false } }
+                    }
+                });
+            }
+
+            // Content Count by Subs
+            const contentBySubs = {};
+            Object.entries(divisionsData).forEach(([subs, data]) => {
+                contentBySubs[subs] = data.length;
+            });
+
+            const sortedContentSubs = Object.entries(contentBySubs)
+                .sort((a, b) => b[1] - a[1])
+                .reduce((obj, [key, val]) => {
+                    obj[key] = val;
+                    return obj;
+                }, {});
+
+            const ctx2 = document.getElementById('overviewContentChart')?.getContext('2d');
+            if (ctx2) {
+                const chartInstance = Chart.helpers.ChartHelpers?.instances?.find(c => c.canvas === document.getElementById('overviewContentChart'));
+                if (chartInstance) chartInstance.destroy();
+
+                new Chart(ctx2, {
+                    type: 'bar',
+                    data: {
+                        labels: Object.keys(sortedContentSubs),
+                        datasets: [{
+                            label: 'Content Count',
+                            data: Object.values(sortedContentSubs),
+                            backgroundColor: ['#1428a0', '#ff9800', '#4caf50']
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: { x: { beginAtZero: true } },
+                        plugins: { legend: { display: false } }
+                    }
+                });
+            }
+
+            // Top Performers
+            const subsTable = document.getElementById('overviewSubsTable');
+            subsTable.innerHTML = Object.entries(divisionsData).map(([subsName, data]) => {
+                const influencerStats = {};
+                data.forEach(d => {
+                    if (!influencerStats[d.name]) {
+                        influencerStats[d.name] = {
+                            name: d.name,
+                            followers: d.followers,
+                            contents: 0,
+                            impression: 0,
+                            engagement: 0
+                        };
+                    }
+                    influencerStats[d.name].contents++;
+                    influencerStats[d.name].impression += d.impression;
+                    influencerStats[d.name].engagement += d.engagement;
+                });
+
+                const influencersWithAvg = Object.values(influencerStats).map(inf => ({
+                    ...inf,
+                    avgImpressionPerContent: inf.impression / inf.contents,
+                    er: inf.impression > 0 ? inf.engagement / inf.impression : 0
+                }));
+
+                influencersWithAvg.sort((a, b) => b.avgImpressionPerContent - a.avgImpressionPerContent);
+                const topQuantile = Math.ceil(influencersWithAvg.length * 0.25);
+                const topInfluencer = influencersWithAvg.slice(0, Math.max(topQuantile, 1))
+                    .sort((a, b) => b.er - a.er)[0];
+
+                if (!topInfluencer) return '';
+
+                return `
+                    <tr>
+                        <td>${subsName}</td>
+                        <td>${topInfluencer.name}</td>
+                        <td>${formatNumber(topInfluencer.followers)}</td>
+                        <td>${formatNumber(topInfluencer.impression)}</td>
+                        <td>${formatNumber(topInfluencer.avgImpressionPerContent)}</td>
+                        <td>${formatPercent(topInfluencer.er)}%</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function loadSub(subsName) {
+            const data = divisionsData[subsName];
+
+            const uniqueInfluencers = new Set(data.map(d => d.name)).size;
+            const totalImpressions = data.reduce((sum, d) => sum + d.impression, 0);
+            const totalEngagements = data.reduce((sum, d) => sum + d.engagement, 0);
+            const avgER = totalImpressions > 0 ? (totalEngagements / totalImpressions) : 0;
+
+            document.getElementById(`stat-influencers-${subsName}`).textContent = uniqueInfluencers;
+            document.getElementById(`stat-content-${subsName}`).textContent = data.length;
+            document.getElementById(`stat-impressions-${subsName}`).textContent = formatNumber(totalImpressions);
+            document.getElementById(`stat-engagements-${subsName}`).textContent = formatNumber(totalEngagements);
+            document.getElementById(`stat-er-${subsName}`).textContent = formatPercent(avgER) + '%';
+
+            // Top Impression
+            const topImpression = [...data]
+                .sort((a, b) => b.impression - a.impression)
+                .slice(0, 5);
+
+            const impTable = document.getElementById(`top-impression-${subsName}`);
+            impTable.innerHTML = topImpression.map((item, idx) => `
+                <tr>
+                    <td>${idx + 1}</td>
+                    <td>${item.name}</td>
+                    <td>${item.product}</td>
+                    <td><span class="badge badge-${item.platform.toLowerCase()}">${item.platform}</span></td>
+                    <td>${formatNumber(item.impression)}</td>
+                    <td>${formatNumber(item.engagement)}</td>
+                    <td>${formatPercent(item.er)}%</td>
+                </tr>
+            `).join('');
+
+            // Top ER
+            const topER = [...data]
+                .sort((a, b) => b.er - a.er)
+                .slice(0, 5);
+
+            const erTable = document.getElementById(`top-er-${subsName}`);
+            erTable.innerHTML = topER.map((item, idx) => `
+                <tr>
+                    <td>${idx + 1}</td>
+                    <td>${item.name}</td>
+                    <td>${item.product}</td>
+                    <td><span class="badge badge-${item.platform.toLowerCase()}">${item.platform}</span></td>
+                    <td>${formatNumber(item.impression)}</td>
+                    <td>${formatNumber(item.engagement)}</td>
+                    <td>${formatPercent(item.er)}%</td>
+                </tr>
+            `).join('');
+        }
+
+        // Initialize
+        window.addEventListener('load', () => {
+            initTabs();
+            updateConnectionStatus();
+        });
+    </script>
+</body>
+</html>
