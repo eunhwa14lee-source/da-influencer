@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Samsung Influencer Marketing Dashboard - Real-time</title>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <style>
         * {
@@ -400,15 +400,14 @@
 
     <script>
         // ===== FIREBASE CONFIGURATION =====
-    document.addEventListener('DOMContentLoaded', function() {
         const firebaseConfig = {
-          apiKey: "AIzaSyBltxdfVfNzoWU9ZjRPD_ZA9qX6BdRmd90",
-          authDomain: "da-influencer.firebaseapp.com",
-          databaseURL: "https://da-influencer-default-rtdb.asia-southeast1.firebasedatabase.app",
-          projectId: "da-influencer",
-          storageBucket: "da-influencer.firebasestorage.app",
-          messagingSenderId: "850189140596",
-          appId: "1:850189140596:web:1f89afe0c4f326bb298721"
+            apiKey: "AIzaSyBltxdfVfNzoWU9ZjRPD_ZA9qX6BdRmd90",
+            authDomain: "da-influencer.firebaseapp.com",
+            databaseURL: "https://da-influencer-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "da-influencer",
+            storageBucket: "da-influencer.firebasestorage.app",
+            messagingSenderId: "850189140596",
+            appId: "1:850189140596:web:1f89afe0c4f326bb298721"
         };
 
         // Firebase 초기화
@@ -430,13 +429,33 @@
                 updateConnectionStatus();
             });
 
-            // Firebase에서 데이터 실시간 로드
+            // Firebase에서 데이터 실시간 로드 (강화된 리스너)
             Object.keys(divisionsData).forEach(subs => {
                 db.ref(`influencer_data/${subs}`).on('value', (snapshot) => {
                     const data = snapshot.val();
                     divisionsData[subs] = data ? Object.values(data) : [];
+                    console.log(`📊 ${subs} updated: ${divisionsData[subs].length} items`);
                     updateAllCharts();
                 });
+            });
+
+            // Entry Form에서 보낸 동기화 신호 감지
+            db.ref('dashboard_sync').on('value', (snapshot) => {
+                const syncData = snapshot.val();
+                if (syncData) {
+                    console.log('🔄 Sync signal received, refreshing dashboard...');
+                    // 1초 후 모든 데이터 다시 로드
+                    setTimeout(() => {
+                        Object.keys(divisionsData).forEach(subs => {
+                            db.ref(`influencer_data/${subs}`).once('value', (snapshot) => {
+                                const data = snapshot.val();
+                                divisionsData[subs] = data ? Object.values(data) : [];
+                                console.log(`✅ ${subs} refreshed: ${divisionsData[subs].length} items`);
+                            });
+                        });
+                        updateAllCharts();
+                    }, 500);
+                }
             });
         } catch (error) {
             console.error('Firebase initialization error:', error);
@@ -750,7 +769,7 @@
             document.getElementById(`stat-impressions-${subsName}`).textContent = formatNumber(totalImpressions);
             document.getElementById(`stat-engagements-${subsName}`).textContent = formatNumber(totalEngagements);
             document.getElementById(`stat-er-${subsName}`).textContent = formatPercent(avgER) + '%';
-            
+
             // Top Impression
             const topImpression = [...data]
                 .sort((a, b) => b.impression - a.impression)
@@ -793,7 +812,6 @@
             initTabs();
             updateConnectionStatus();
         });
-    });
     </script>
 </body>
 </html>
