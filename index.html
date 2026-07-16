@@ -228,6 +228,33 @@
         </div>
 
         <div class="content">
+            <!-- Quarter Range Filter -->
+            <div style="margin-bottom: 30px; padding: 15px; background: #f9f9f9; border-radius: 8px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                <label style="font-weight: 600; color: #333; margin: 0; white-space: nowrap;">📅 Filter Period:</label>
+                <select id="quarterStart" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; min-width: 100px;" onchange="filterByQuarterRange()">
+                    <option value="">Select Start</option>
+                    <option value="25 1Q">25 1Q</option>
+                    <option value="25 2Q">25 2Q</option>
+                    <option value="25 3Q">25 3Q</option>
+                    <option value="25 4Q">25 4Q</option>
+                    <option value="26 1Q">26 1Q</option>
+                    <option value="26 2Q">26 2Q</option>
+                    <option value="26 3Q">26 3Q</option>
+                </select>
+                <span style="color: #999;">~</span>
+                <select id="quarterEnd" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; min-width: 100px;" onchange="filterByQuarterRange()">
+                    <option value="">Select End</option>
+                    <option value="25 1Q">25 1Q</option>
+                    <option value="25 2Q">25 2Q</option>
+                    <option value="25 3Q">25 3Q</option>
+                    <option value="25 4Q">25 4Q</option>
+                    <option value="26 1Q">26 1Q</option>
+                    <option value="26 2Q">26 2Q</option>
+                    <option value="26 3Q">26 3Q</option>
+                </select>
+                <span id="filterInfo" style="color: #666; font-size: 13px; min-width: 200px;"></span>
+            </div>
+
             <!-- Tabs -->
             <div class="tabs" id="tabsContainer"></div>
 
@@ -255,13 +282,23 @@
 
             let db = null;
             let isConnected = false;
+            let selectedQuarterStart = ''; // 시작 Quarter
+            let selectedQuarterEnd = ''; // 종료 Quarter
             let divisionsData = {
+                'GBM': [],
+                'SEA': [],
+                'SEUK': []
+            };
+            let filteredDivisionsData = {
                 'GBM': [],
                 'SEA': [],
                 'SEUK': []
             };
 
             const chartInstances = {};
+            
+            // Quarter 순서 정의
+            const quarterOrder = ['25 1Q', '25 2Q', '25 3Q', '25 4Q', '26 1Q', '26 2Q', '26 3Q'];
 
             try {
                 firebase.initializeApp(firebaseConfig);
@@ -272,13 +309,31 @@
                     updateConnectionStatus();
                 });
 
-                // Firebase에서 데이터 실시간 로드
+                // Firebase에서 데이터 실시간 로드 (최신 submit만)
                 Object.keys(divisionsData).forEach(subs => {
                     db.ref(`influencer_data/${subs}`).on('value', (snapshot) => {
-                        const data = snapshot.val();
-                        divisionsData[subs] = data ? Object.values(data) : [];
-                        console.log(`📊 ${subs} updated: ${divisionsData[subs].length} items`);
-                        renderTabs();
+                        const allData = snapshot.val();
+                        if (!allData) {
+                            divisionsData[subs] = [];
+                        } else {
+                            // 모든 데이터를 가져와서 timestamp로 그룹화
+                            const dataArray = Object.values(allData);
+                            
+                            // 가장 최신 submit batch 찾기 (timestamp로 정렬)
+                            const grouped = {};
+                            dataArray.forEach(item => {
+                                const ts = item.timestamp || '';
+                                if (!grouped[ts]) grouped[ts] = [];
+                                grouped[ts].push(item);
+                            });
+                            
+                            // 최신 batch만 사용
+                            const timestamps = Object.keys(grouped).sort().reverse();
+                            divisionsData[subs] = timestamps.length > 0 ? grouped[timestamps[0]] : [];
+                        }
+                        
+                        console.log(`📊 ${subs} updated: ${divisionsData[subs].length} items (latest batch)`);
+                        applyQuarterFilter();
                     });
                 });
 
@@ -307,6 +362,52 @@
                     statusText.textContent = '🔴 Disconnected - Check Internet';
                 }
             }
+
+            // Quarter 기간 필터링 적용
+            function applyQuarterFilter() {
+                selectedQuarterStart = document.getElementById('quarterStart').value;
+                selectedQuarterEnd = document.getElementById('quarterEnd').value;
+                
+                Object.keys(divisionsData).forEach(subs => {
+                    if (selectedQuarterStart === '' && selectedQuarterEnd === '') {
+                        // 필터 없음 - 모든 데이터 사용
+                        filteredDivisionsData[subs] = divisionsData[subs];
+                    } else {
+                        // Start와 End 사이의 Quarter 포함
+                        const startIdx = selectedQuarterStart ? quarterOrder.indexOf(selectedQuarterStart) : 0;
+                        const endIdx = selectedQuarterEnd ? quarterOrder.indexOf(selectedQuarterEnd) : quarterOrder.length - 1;
+                        
+                        if (startIdx === -1 || endIdx === -1) {
+                            filteredDivisionsData[subs] = [];
+                        } else {
+                            const validQuarters = quarterOrder.slice(Math.min(startIdx, endIdx), Math.max(startIdx, endIdx) + 1);
+                            filteredDivisionsData[subs] = divisionsData[subs].filter(item => 
+                                validQuarters.includes(item.quarter)
+                            );
+                        }
+                    }
+                });
+                
+                // 필터 정보 표시
+                const filterInfo = document.getElementById('filterInfo');
+                if (selectedQuarterStart === '' && selectedQuarterEnd === '') {
+                    filterInfo.textContent = '';
+                } else {
+                    const startText = selectedQuarterStart || '—';
+                    const endText = selectedQuarterEnd || '—';
+                    const totalItems = Object.values(filteredDivisionsData).reduce((sum, arr) => sum + arr.length, 0);
+                    filterInfo.textContent = `📍 ${startText} ~ ${endText} (${totalItems} items)`;
+                }
+                
+                renderTabs();
+            }
+
+            // Quarter 기간 필터 변경 이벤트
+            window.filterByQuarterRange = function() {
+                applyQuarterFilter();
+            };
+
+            function updateConnectionStatus() {
 
             function renderTabs() {
                 const tabsContainer = document.getElementById('tabsContainer');
@@ -373,7 +474,7 @@
                 });
 
                 loadOverview();
-                Object.keys(divisionsData).forEach(subs => loadSubTab(subs));
+                Object.keys(filteredDivisionsData).forEach(subs => loadSubTab(subs));
             }
 
             function switchTab(tabName) {
@@ -393,7 +494,7 @@
 
             function loadOverview() {
                 let allData = [];
-                Object.values(divisionsData).forEach(data => {
+                Object.values(filteredDivisionsData).forEach(data => {
                     allData = allData.concat(data);
                 });
 
@@ -620,7 +721,7 @@
             }
 
             function loadSubTab(subsName) {
-                const data = divisionsData[subsName];
+                const data = filteredDivisionsData[subsName];
                 if (!data || data.length === 0) return;
 
                 // KPI
