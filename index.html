@@ -283,8 +283,6 @@
 
             let db = null;
             let isConnected = false;
-            let selectedQuarterStart = ''; // 시작 Quarter
-            let selectedQuarterEnd = ''; // 종료 Quarter
             let divisionsData = {
                 'GBM': [],
                 'SEA': [],
@@ -295,11 +293,9 @@
                 'SEA': [],
                 'SEUK': []
             };
+            const quarterOrder = ['25 1Q', '25 2Q', '25 3Q', '25 4Q', '26 1Q', '26 2Q', '26 3Q'];
 
             const chartInstances = {};
-            
-            // Quarter 순서 정의
-            const quarterOrder = ['25 1Q', '25 2Q', '25 3Q', '25 4Q', '26 1Q', '26 2Q', '26 3Q'];
 
             try {
                 firebase.initializeApp(firebaseConfig);
@@ -317,23 +313,17 @@
                         if (!allData) {
                             divisionsData[subs] = [];
                         } else {
-                            // 모든 데이터를 가져와서 timestamp로 그룹화
                             const dataArray = Object.values(allData);
-                            
-                            // 가장 최신 submit batch 찾기 (timestamp로 정렬)
                             const grouped = {};
                             dataArray.forEach(item => {
                                 const ts = item.timestamp || '';
                                 if (!grouped[ts]) grouped[ts] = [];
                                 grouped[ts].push(item);
                             });
-                            
-                            // 최신 batch만 사용
                             const timestamps = Object.keys(grouped).sort().reverse();
                             divisionsData[subs] = timestamps.length > 0 ? grouped[timestamps[0]] : [];
                         }
-                        
-                        console.log(`📊 ${subs} updated: ${divisionsData[subs].length} items (latest batch)`);
+                        console.log(`📊 ${subs} updated: ${divisionsData[subs].length} items`);
                         applyQuarterFilter();
                     });
                 });
@@ -343,13 +333,64 @@
                     if (snapshot.val()) {
                         console.log('🔄 Sync signal received');
                         setTimeout(() => {
-                            renderTabs();
+                            applyQuarterFilter();
                         }, 500);
                     }
                 });
             } catch (error) {
                 console.error('Firebase error:', error);
             }
+
+            // Quarter 기간 필터링
+            function applyQuarterFilter() {
+                const startVal = document.getElementById('quarterStart') ? document.getElementById('quarterStart').value : '';
+                const endVal = document.getElementById('quarterEnd') ? document.getElementById('quarterEnd').value : '';
+                
+                Object.keys(divisionsData).forEach(subs => {
+                    if (startVal === '' && endVal === '') {
+                        filteredDivisionsData[subs] = divisionsData[subs];
+                    } else {
+                        const startIdx = startVal ? quarterOrder.indexOf(startVal) : 0;
+                        const endIdx = endVal ? quarterOrder.indexOf(endVal) : quarterOrder.length - 1;
+                        
+                        if (startIdx === -1 || endIdx === -1) {
+                            filteredDivisionsData[subs] = [];
+                        } else {
+                            const validQuarters = quarterOrder.slice(Math.min(startIdx, endIdx), Math.max(startIdx, endIdx) + 1);
+                            filteredDivisionsData[subs] = divisionsData[subs].filter(item => 
+                                validQuarters.includes(item.quarter)
+                            );
+                        }
+                    }
+                });
+                
+                const filterInfo = document.getElementById('filterInfo');
+                if (startVal === '' && endVal === '') {
+                    filterInfo.textContent = '';
+                } else {
+                    const startText = startVal || '—';
+                    const endText = endVal || '—';
+                    const totalItems = Object.values(filteredDivisionsData).reduce((sum, arr) => sum + arr.length, 0);
+                    filterInfo.textContent = `📍 ${startText} ~ ${endText} (${totalItems} items)`;
+                }
+                
+                renderTabs();
+            }
+
+            window.filterByQuarterRange = function() {
+                applyQuarterFilter();
+            };
+
+            window.scrollToDashboard = function() {
+                const tabsContainer = document.getElementById('tabsContainer');
+                if (tabsContainer) {
+                    tabsContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    setTimeout(() => {
+                        const overviewBtn = document.querySelector('.tab-button');
+                        if (overviewBtn) overviewBtn.click();
+                    }, 500);
+                }
+            };
 
             function updateConnectionStatus() {
                 const statusEl = document.getElementById('connectionStatus');
@@ -363,65 +404,6 @@
                     statusText.textContent = '🔴 Disconnected - Check Internet';
                 }
             }
-
-            // Quarter 기간 필터링 적용
-            function applyQuarterFilter() {
-                selectedQuarterStart = document.getElementById('quarterStart').value;
-                selectedQuarterEnd = document.getElementById('quarterEnd').value;
-                
-                Object.keys(divisionsData).forEach(subs => {
-                    if (selectedQuarterStart === '' && selectedQuarterEnd === '') {
-                        // 필터 없음 - 모든 데이터 사용
-                        filteredDivisionsData[subs] = divisionsData[subs];
-                    } else {
-                        // Start와 End 사이의 Quarter 포함
-                        const startIdx = selectedQuarterStart ? quarterOrder.indexOf(selectedQuarterStart) : 0;
-                        const endIdx = selectedQuarterEnd ? quarterOrder.indexOf(selectedQuarterEnd) : quarterOrder.length - 1;
-                        
-                        if (startIdx === -1 || endIdx === -1) {
-                            filteredDivisionsData[subs] = [];
-                        } else {
-                            const validQuarters = quarterOrder.slice(Math.min(startIdx, endIdx), Math.max(startIdx, endIdx) + 1);
-                            filteredDivisionsData[subs] = divisionsData[subs].filter(item => 
-                                validQuarters.includes(item.quarter)
-                            );
-                        }
-                    }
-                });
-                
-                // 필터 정보 표시
-                const filterInfo = document.getElementById('filterInfo');
-                if (selectedQuarterStart === '' && selectedQuarterEnd === '') {
-                    filterInfo.textContent = '';
-                } else {
-                    const startText = selectedQuarterStart || '—';
-                    const endText = selectedQuarterEnd || '—';
-                    const totalItems = Object.values(filteredDivisionsData).reduce((sum, arr) => sum + arr.length, 0);
-                    filterInfo.textContent = `📍 ${startText} ~ ${endText} (${totalItems} items)`;
-                }
-                
-                renderTabs();
-            }
-
-            // Quarter 기간 필터 변경 이벤트
-            window.filterByQuarterRange = function() {
-                applyQuarterFilter();
-            };
-
-            // Dashboard 뷰로 스크롤
-            window.scrollToDashboard = function() {
-                const tabsContainer = document.getElementById('tabsContainer');
-                if (tabsContainer) {
-                    tabsContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    // Overview 탭 자동 활성화
-                    setTimeout(() => {
-                        const overviewBtn = document.querySelector('.tab-button');
-                        if (overviewBtn) overviewBtn.click();
-                    }, 500);
-                }
-            };
-
-            function updateConnectionStatus() {
 
             function renderTabs() {
                 const tabsContainer = document.getElementById('tabsContainer');
@@ -516,10 +498,8 @@
 
                 const uniqueInfluencers = new Set(allData.map(d => d.name)).size;
                 const totalContent = allData.length;
-                const totalImpressions = allData.reduce((sum, d) => sum + (parseInt(d.impression) || 0), 0);
-                const totalEngagements = allData.reduce((sum, d) => sum + (parseInt(d.engagement) || 0), 0);
-                const avgImpressions = totalContent > 0 ? Math.round(totalImpressions / totalContent) : 0;
-                const avgEngagements = totalContent > 0 ? Math.round(totalEngagements / totalContent) : 0;
+                const totalImpressions = allData.reduce((sum, d) => sum + d.impression, 0);
+                const totalEngagements = allData.reduce((sum, d) => sum + d.engagement, 0);
                 const avgER = totalImpressions > 0 ? (totalEngagements / totalImpressions * 100) : 0;
 
                 const kpiContainer = document.getElementById('overviewKPI');
@@ -541,23 +521,14 @@
                         <div class="kpi-value">${formatNumber(totalImpressions)}</div>
                     </div>
                     <div class="kpi-card">
-                        <div class="kpi-label">Avg Impressions</div>
-                        <div class="kpi-value">${formatNumber(avgImpressions)}</div>
-                    </div>
-                    <div class="kpi-card">
                         <div class="kpi-label">Total Engagements</div>
                         <div class="kpi-value">${formatNumber(totalEngagements)}</div>
                     </div>
                     <div class="kpi-card">
-                        <div class="kpi-label">Avg Engagements</div>
-                        <div class="kpi-value">${formatNumber(avgEngagements)}</div>
-                    </div>
-                    <div class="kpi-card">
-                        <div class="kpi-label">Total ER</div>
-                        <div class="kpi-value">${formatER(avgER)}</div>
+                        <div class="kpi-label">Average ER</div>
+                        <div class="kpi-value">${avgER.toFixed(2)}%</div>
                     </div>
                 `;
-
 
                 const chartsContainer = document.getElementById('overviewCharts');
                 chartsContainer.innerHTML = `
@@ -716,9 +687,7 @@
                 });
 
                 tbody.innerHTML = topContents.map(content => {
-                    const imp = parseInt(content.impression) || 0;
-                    const eng = parseInt(content.engagement) || 0;
-                    const er = imp > 0 ? (eng / imp * 100) : 0;
+                    const er = content.impression > 0 ? (content.engagement / content.impression * 100) : 0;
                     return `
                         <tr>
                             <td><strong>${content.subs}</strong></td>
@@ -726,9 +695,9 @@
                             <td>${content.product}</td>
                             <td>${content.category}</td>
                             <td>${content.platform}</td>
-                            <td>${formatNumber(imp)}</td>
-                            <td>${formatNumber(eng)}</td>
-                            <td>${formatER(er)}</td>
+                            <td>${formatNumber(content.impression)}</td>
+                            <td>${formatNumber(content.engagement)}</td>
+                            <td>${er.toFixed(2)}%</td>
                         </tr>
                     `;
                 }).join('');
@@ -740,10 +709,8 @@
 
                 // KPI
                 const uniqueInfluencers = new Set(data.map(d => d.name)).size;
-                const totalImpressions = data.reduce((sum, d) => sum + (parseInt(d.impression) || 0), 0);
-                const totalEngagements = data.reduce((sum, d) => sum + (parseInt(d.engagement) || 0), 0);
-                const avgImpressions = data.length > 0 ? Math.round(totalImpressions / data.length) : 0;
-                const avgEngagements = data.length > 0 ? Math.round(totalEngagements / data.length) : 0;
+                const totalImpressions = data.reduce((sum, d) => sum + d.impression, 0);
+                const totalEngagements = data.reduce((sum, d) => sum + d.engagement, 0);
                 const avgER = totalImpressions > 0 ? (totalEngagements / totalImpressions * 100) : 0;
 
                 const kpiContainer = document.getElementById(`kpi-${subsName}`);
@@ -761,20 +728,7 @@
                         <div class="kpi-value">${formatNumber(totalImpressions)}</div>
                     </div>
                     <div class="kpi-card">
-                        <div class="kpi-label">Avg Impressions</div>
-                        <div class="kpi-value">${formatNumber(avgImpressions)}</div>
-                    </div>
-                    <div class="kpi-card">
-                        <div class="kpi-label">Total Engagements</div>
-                        <div class="kpi-value">${formatNumber(totalEngagements)}</div>
-                    </div>
-                    <div class="kpi-card">
-                        <div class="kpi-label">Avg Engagements</div>
-                        <div class="kpi-value">${formatNumber(avgEngagements)}</div>
-                    </div>
-                    <div class="kpi-card">
-                        <div class="kpi-label">Total ER</div>
-                        <div class="kpi-value">${formatER(avgER)}</div>
+                        <div class="kpi-label">Avg ER</div>
                         <div class="kpi-value">${avgER.toFixed(2)}%</div>
                     </div>
                 `;
@@ -831,8 +785,8 @@
                         if (!productStats[product]) {
                             productStats[product] = { impression: 0, engagement: 0, count: 0 };
                         }
-                        productStats[product].impression += parseInt(d.impression) || 0;
-                        productStats[product].engagement += parseInt(d.engagement) || 0;
+                        productStats[product].impression += d.impression;
+                        productStats[product].engagement += d.engagement;
                         productStats[product].count++;
                     });
                 });
@@ -872,8 +826,8 @@
                     if (!categoryStats[cat]) {
                         categoryStats[cat] = { impression: 0, engagement: 0, count: 0 };
                     }
-                    categoryStats[cat].impression += parseInt(d.impression) || 0;
-                    categoryStats[cat].engagement += parseInt(d.engagement) || 0;
+                    categoryStats[cat].impression += d.impression;
+                    categoryStats[cat].engagement += d.engagement;
                     categoryStats[cat].count++;
                 });
 
@@ -970,7 +924,7 @@
                 // Platform Distribution
                 const platformImpressions = {};
                 data.forEach(d => {
-                    platformImpressions[d.platform] = (platformImpressions[d.platform] || 0) + (parseInt(d.impression) || 0);
+                    platformImpressions[d.platform] = (platformImpressions[d.platform] || 0) + d.impression;
                 });
 
                 createChart(`platformChart-${subsName}`, 'bar', {
@@ -995,8 +949,8 @@
                         };
                     }
                     influencerStats[d.name].contents++;
-                    influencerStats[d.name].impression += parseInt(d.impression) || 0;
-                    influencerStats[d.name].engagement += parseInt(d.engagement) || 0;
+                    influencerStats[d.name].impression += d.impression;
+                    influencerStats[d.name].engagement += d.engagement;
                 });
 
                 const topInfluencers = Object.values(influencerStats)
@@ -1005,7 +959,7 @@
 
                 const tbody = document.getElementById(`table-${subsName}`);
                 tbody.innerHTML = topInfluencers.map(inf => {
-                    const avgImp = Math.round(inf.impression / inf.contents);
+                    const avgImp = inf.impression / inf.contents;
                     const er = inf.impression > 0 ? (inf.engagement / inf.impression * 100) : 0;
                     return `
                         <tr>
@@ -1013,8 +967,8 @@
                             <td>${formatNumber(inf.followers)}</td>
                             <td>${inf.contents}</td>
                             <td>${formatNumber(inf.impression)}</td>
-                            <td>${formatNumber(avgImp)}</td>
-                            <td>${formatER(er)}</td>
+                            <td>${formatNumber(Math.round(avgImp))}</td>
+                            <td>${er.toFixed(2)}%</td>
                         </tr>
                     `;
                 }).join('');
