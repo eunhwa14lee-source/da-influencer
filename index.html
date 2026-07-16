@@ -253,6 +253,7 @@
                     <option value="26 3Q">26 3Q</option>
                 </select>
                 <span id="filterInfo" style="color: #666; font-size: 13px; min-width: 200px;"></span>
+                <button onclick="scrollToDashboard()" style="margin-left: auto; padding: 8px 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;">📊 View Dashboard</button>
             </div>
 
             <!-- Tabs -->
@@ -405,6 +406,19 @@
             // Quarter 기간 필터 변경 이벤트
             window.filterByQuarterRange = function() {
                 applyQuarterFilter();
+            };
+
+            // Dashboard 뷰로 스크롤
+            window.scrollToDashboard = function() {
+                const tabsContainer = document.getElementById('tabsContainer');
+                if (tabsContainer) {
+                    tabsContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    // Overview 탭 자동 활성화
+                    setTimeout(() => {
+                        const overviewBtn = document.querySelector('.tab-button');
+                        if (overviewBtn) overviewBtn.click();
+                    }, 500);
+                }
             };
 
             function updateConnectionStatus() {
