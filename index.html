@@ -401,8 +401,10 @@
 
                 const uniqueInfluencers = new Set(allData.map(d => d.name)).size;
                 const totalContent = allData.length;
-                const totalImpressions = allData.reduce((sum, d) => sum + d.impression, 0);
-                const totalEngagements = allData.reduce((sum, d) => sum + d.engagement, 0);
+                const totalImpressions = allData.reduce((sum, d) => sum + (parseInt(d.impression) || 0), 0);
+                const totalEngagements = allData.reduce((sum, d) => sum + (parseInt(d.engagement) || 0), 0);
+                const avgImpressions = totalContent > 0 ? Math.round(totalImpressions / totalContent) : 0;
+                const avgEngagements = totalContent > 0 ? Math.round(totalEngagements / totalContent) : 0;
                 const avgER = totalImpressions > 0 ? (totalEngagements / totalImpressions * 100) : 0;
 
                 const kpiContainer = document.getElementById('overviewKPI');
@@ -424,14 +426,23 @@
                         <div class="kpi-value">${formatNumber(totalImpressions)}</div>
                     </div>
                     <div class="kpi-card">
+                        <div class="kpi-label">Avg Impressions</div>
+                        <div class="kpi-value">${formatNumber(avgImpressions)}</div>
+                    </div>
+                    <div class="kpi-card">
                         <div class="kpi-label">Total Engagements</div>
                         <div class="kpi-value">${formatNumber(totalEngagements)}</div>
                     </div>
                     <div class="kpi-card">
-                        <div class="kpi-label">Average ER</div>
-                        <div class="kpi-value">${avgER.toFixed(2)}%</div>
+                        <div class="kpi-label">Avg Engagements</div>
+                        <div class="kpi-value">${formatNumber(avgEngagements)}</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-label">Total ER</div>
+                        <div class="kpi-value">${formatER(avgER)}</div>
                     </div>
                 `;
+
 
                 const chartsContainer = document.getElementById('overviewCharts');
                 chartsContainer.innerHTML = `
@@ -590,7 +601,9 @@
                 });
 
                 tbody.innerHTML = topContents.map(content => {
-                    const er = content.impression > 0 ? (content.engagement / content.impression * 100) : 0;
+                    const imp = parseInt(content.impression) || 0;
+                    const eng = parseInt(content.engagement) || 0;
+                    const er = imp > 0 ? (eng / imp * 100) : 0;
                     return `
                         <tr>
                             <td><strong>${content.subs}</strong></td>
@@ -598,9 +611,9 @@
                             <td>${content.product}</td>
                             <td>${content.category}</td>
                             <td>${content.platform}</td>
-                            <td>${formatNumber(content.impression)}</td>
-                            <td>${formatNumber(content.engagement)}</td>
-                            <td>${er.toFixed(2)}%</td>
+                            <td>${formatNumber(imp)}</td>
+                            <td>${formatNumber(eng)}</td>
+                            <td>${formatER(er)}</td>
                         </tr>
                     `;
                 }).join('');
@@ -612,8 +625,10 @@
 
                 // KPI
                 const uniqueInfluencers = new Set(data.map(d => d.name)).size;
-                const totalImpressions = data.reduce((sum, d) => sum + d.impression, 0);
-                const totalEngagements = data.reduce((sum, d) => sum + d.engagement, 0);
+                const totalImpressions = data.reduce((sum, d) => sum + (parseInt(d.impression) || 0), 0);
+                const totalEngagements = data.reduce((sum, d) => sum + (parseInt(d.engagement) || 0), 0);
+                const avgImpressions = data.length > 0 ? Math.round(totalImpressions / data.length) : 0;
+                const avgEngagements = data.length > 0 ? Math.round(totalEngagements / data.length) : 0;
                 const avgER = totalImpressions > 0 ? (totalEngagements / totalImpressions * 100) : 0;
 
                 const kpiContainer = document.getElementById(`kpi-${subsName}`);
@@ -631,7 +646,20 @@
                         <div class="kpi-value">${formatNumber(totalImpressions)}</div>
                     </div>
                     <div class="kpi-card">
-                        <div class="kpi-label">Avg ER</div>
+                        <div class="kpi-label">Avg Impressions</div>
+                        <div class="kpi-value">${formatNumber(avgImpressions)}</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-label">Total Engagements</div>
+                        <div class="kpi-value">${formatNumber(totalEngagements)}</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-label">Avg Engagements</div>
+                        <div class="kpi-value">${formatNumber(avgEngagements)}</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-label">Total ER</div>
+                        <div class="kpi-value">${formatER(avgER)}</div>
                         <div class="kpi-value">${avgER.toFixed(2)}%</div>
                     </div>
                 `;
@@ -688,8 +716,8 @@
                         if (!productStats[product]) {
                             productStats[product] = { impression: 0, engagement: 0, count: 0 };
                         }
-                        productStats[product].impression += d.impression;
-                        productStats[product].engagement += d.engagement;
+                        productStats[product].impression += parseInt(d.impression) || 0;
+                        productStats[product].engagement += parseInt(d.engagement) || 0;
                         productStats[product].count++;
                     });
                 });
@@ -729,8 +757,8 @@
                     if (!categoryStats[cat]) {
                         categoryStats[cat] = { impression: 0, engagement: 0, count: 0 };
                     }
-                    categoryStats[cat].impression += d.impression;
-                    categoryStats[cat].engagement += d.engagement;
+                    categoryStats[cat].impression += parseInt(d.impression) || 0;
+                    categoryStats[cat].engagement += parseInt(d.engagement) || 0;
                     categoryStats[cat].count++;
                 });
 
@@ -827,7 +855,7 @@
                 // Platform Distribution
                 const platformImpressions = {};
                 data.forEach(d => {
-                    platformImpressions[d.platform] = (platformImpressions[d.platform] || 0) + d.impression;
+                    platformImpressions[d.platform] = (platformImpressions[d.platform] || 0) + (parseInt(d.impression) || 0);
                 });
 
                 createChart(`platformChart-${subsName}`, 'bar', {
@@ -852,8 +880,8 @@
                         };
                     }
                     influencerStats[d.name].contents++;
-                    influencerStats[d.name].impression += d.impression;
-                    influencerStats[d.name].engagement += d.engagement;
+                    influencerStats[d.name].impression += parseInt(d.impression) || 0;
+                    influencerStats[d.name].engagement += parseInt(d.engagement) || 0;
                 });
 
                 const topInfluencers = Object.values(influencerStats)
@@ -862,7 +890,7 @@
 
                 const tbody = document.getElementById(`table-${subsName}`);
                 tbody.innerHTML = topInfluencers.map(inf => {
-                    const avgImp = inf.impression / inf.contents;
+                    const avgImp = Math.round(inf.impression / inf.contents);
                     const er = inf.impression > 0 ? (inf.engagement / inf.impression * 100) : 0;
                     return `
                         <tr>
@@ -870,8 +898,8 @@
                             <td>${formatNumber(inf.followers)}</td>
                             <td>${inf.contents}</td>
                             <td>${formatNumber(inf.impression)}</td>
-                            <td>${formatNumber(Math.round(avgImp))}</td>
-                            <td>${er.toFixed(2)}%</td>
+                            <td>${formatNumber(avgImp)}</td>
+                            <td>${formatER(er)}</td>
                         </tr>
                     `;
                 }).join('');
@@ -932,7 +960,19 @@
             }
 
             function formatNumber(num) {
+                if (!num) return '0';
+                num = parseInt(num) || 0;
+                
+                if (num >= 1000000) {
+                    return (num / 1000000).toFixed(1) + 'M';
+                } else if (num >= 1000) {
+                    return (num / 1000).toFixed(1) + 'K';
+                }
                 return num.toLocaleString();
+            }
+            
+            function formatER(num) {
+                return (num).toFixed(2) + '%';
             }
 
             // Initialize
