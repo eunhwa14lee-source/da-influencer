@@ -306,22 +306,14 @@
                     updateConnectionStatus();
                 });
 
-                // Firebase에서 데이터 실시간 로드 (최신 submit만)
+                // Firebase에서 데이터 실시간 로드 (전체 데이터)
                 Object.keys(divisionsData).forEach(subs => {
                     db.ref(`influencer_data/${subs}`).on('value', (snapshot) => {
                         const allData = snapshot.val();
                         if (!allData) {
                             divisionsData[subs] = [];
                         } else {
-                            const dataArray = Object.values(allData);
-                            const grouped = {};
-                            dataArray.forEach(item => {
-                                const ts = item.timestamp || '';
-                                if (!grouped[ts]) grouped[ts] = [];
-                                grouped[ts].push(item);
-                            });
-                            const timestamps = Object.keys(grouped).sort().reverse();
-                            divisionsData[subs] = timestamps.length > 0 ? grouped[timestamps[0]] : [];
+                            divisionsData[subs] = Object.values(allData);
                         }
                         console.log(`📊 ${subs} updated: ${divisionsData[subs].length} items`);
                         applyQuarterFilter();
