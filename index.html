@@ -127,9 +127,39 @@
 
         .charts-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
-            gap: 30px;
+        .charts-grid {
+            display: block;
             margin-bottom: 30px;
+        }
+
+        .row-2col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .row-2col-wide {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .row-3col {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 1100px) {
+            .row-2col, .row-2col-wide { grid-template-columns: 1fr; }
+            .row-3col { grid-template-columns: 1fr 1fr; }
+        }
+
+        @media (max-width: 700px) {
+            .row-2col, .row-2col-wide, .row-3col { grid-template-columns: 1fr; }
         }
 
         .chart-card {
@@ -151,10 +181,7 @@
         }
 
         .small-charts-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 20px;
-            margin-top: 20px;
+            display: none;
         }
 
         .table-card {
@@ -206,15 +233,6 @@
             border-top: 1px solid #e0e0e0;
         }
 
-        @media (max-width: 1024px) {
-            .charts-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .small-charts-grid {
-                grid-template-columns: 1fr;
-            }
-        }
     </style>
 </head>
 <body>
@@ -799,8 +817,8 @@
                 // ── Build HTML ────────────────────────────────────────
                 const chartsContainer = document.getElementById(`charts-${subsName}`);
                 chartsContainer.innerHTML = `
-                    <!-- ROW 1 -->
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">
+                    <!-- ROW 1: 2열 -->
+                    <div class="row-2col">
                         <div class="chart-card">
                             <h3>📈 Quarterly Performance (Avg Impression & ER)</h3>
                             <div class="chart-container"><canvas id="qPerfChart-${subsName}"></canvas></div>
@@ -810,8 +828,8 @@
                             <div class="chart-container"><canvas id="qCountChart-${subsName}"></canvas></div>
                         </div>
                     </div>
-                    <!-- ROW 2 -->
-                    <div style="display:grid;grid-template-columns:2fr 1fr;gap:20px;margin-bottom:20px;">
+                    <!-- ROW 2: 2fr + 1fr -->
+                    <div class="row-2col-wide">
                         <div class="chart-card">
                             <h3>👥 Follower Tier Performance (Avg Impression & ER)</h3>
                             <div class="chart-container"><canvas id="tierPerfChart-${subsName}"></canvas></div>
@@ -821,8 +839,8 @@
                             <div class="chart-container"><canvas id="segChart-${subsName}"></canvas></div>
                         </div>
                     </div>
-                    <!-- ROW 3 -->
-                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-bottom:20px;">
+                    <!-- ROW 3: 3열 도넛 -->
+                    <div class="row-3col">
                         <div class="chart-card">
                             <h3>📦 Product Distribution</h3>
                             <div class="chart-container"><canvas id="productDonut-${subsName}"></canvas></div>
