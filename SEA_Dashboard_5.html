@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Samsung Influencer Marketing Dashboard - Advanced Analytics</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1428a0 0%, #0f1a6d 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 8px 16px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 20px;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+
+        .status.connected {
+            background: #4caf50;
+        }
+
+        .status.disconnected {
+            background: #f44336;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e0e0e0;
+            flex-wrap: wrap;
+        }
+
+        .tab-button {
+            padding: 12px 24px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-weight: 600;
+            color: #666;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tab-button:hover {
+            color: #1428a0;
+        }
+
+        .tab-button.active {
+            color: #1428a0;
+            border-bottom-color: #1428a0;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .kpi-card {
+            background: linear-gradient(135deg, #1428a0 0%, #1e3a8a 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .kpi-label {
+            font-size: 12px;
+            opacity: 0.9;
+            margin-bottom: 8px;
+        }
+
+        .kpi-value {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .charts-grid {
+            display: block;
+            margin-bottom: 30px;
+        }
+
+        .row-2col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .row-2col-wide {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .row-3col {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .row-2col > *, .row-2col-wide > *, .row-3col > * {
+            min-width: 0;
+        }
+
+        @media (max-width: 1100px) {
+            .row-2col, .row-2col-wide { grid-template-columns: 1fr; }
+            .row-3col { grid-template-columns: 1fr 1fr; }
+        }
+
+        @media (max-width: 700px) {
+            .row-2col, .row-2col-wide, .row-3col { grid-template-columns: 1fr; }
+        }
+
+        .chart-card {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+            overflow: hidden;
+            min-width: 0;
+        }
+
+        .chart-card h3 {
+            margin-bottom: 15px;
+            color: #1428a0;
+            font-size: 16px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+
+        .small-charts-grid {
+            display: none;
+        }
+
+        .table-card {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+            margin-top: 30px;
+        }
+
+        .table-card h3 {
+            margin-bottom: 15px;
+            color: #1428a0;
+            font-size: 16px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        thead {
+            background: #f0f0f0;
+        }
+
+        th {
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #ddd;
+        }
+
+        td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #eee;
+        }
+
+        tbody tr:hover {
+            background: #f5f5f5;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 25px 20px;
+            color: #888;
+            font-size: 12px;
+            background: #f9f9f9;
+            border-top: 1px solid #e0e0e0;
+            margin-top: 40px;
+            letter-spacing: 0.3px;
+        }
+
+        .footer p {
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .footer span.divider {
+            color: #ccc;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Advanced Analytics Dashboard</h1>
+            <p>Samsung Influencer Marketing - Real-time Performance</p>
+            <div class="status disconnected" id="connectionStatus">
+                <span id="statusText">🔴 Disconnected</span>
+            </div>
+        </div>
+
+        <div class="content">
+            <!-- Quarter Range Filter -->
+            <div style="margin-bottom: 30px; padding: 15px; background: #f9f9f9; border-radius: 8px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                <label style="font-weight: 600; color: #333; margin: 0; white-space: nowrap;">📅 Filter Period:</label>
+                <select id="quarterStart" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; min-width: 100px;" onchange="filterByQuarterRange()">
+                    <option value="">Select Start</option>
+                    <option value="25 1Q">25 1Q</option>
+                    <option value="25 2Q">25 2Q</option>
+                    <option value="25 3Q">25 3Q</option>
+                    <option value="25 4Q">25 4Q</option>
+                    <option value="26 1Q">26 1Q</option>
+                    <option value="26 2Q">26 2Q</option>
+                    <option value="26 3Q">26 3Q</option>
+                </select>
+                <span style="color: #999;">~</span>
+                <select id="quarterEnd" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; min-width: 100px;" onchange="filterByQuarterRange()">
+                    <option value="">Select End</option>
+                    <option value="25 1Q">25 1Q</option>
+                    <option value="25 2Q">25 2Q</option>
+                    <option value="25 3Q">25 3Q</option>
+                    <option value="25 4Q">25 4Q</option>
+                    <option value="26 1Q">26 1Q</option>
+                    <option value="26 2Q">26 2Q</option>
+                    <option value="26 3Q">26 3Q</option>
+                </select>
+                <span id="filterInfo" style="color: #666; font-size: 13px; min-width: 200px;"></span>
+                <button onclick="scrollToDashboard()" style="margin-left: auto; padding: 8px 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;">📊 View Dashboard</button>
+            </div>
+
+            <!-- Tabs -->
+            <div class="tabs" id="tabsContainer"></div>
+
+            <!-- Tab Contents -->
+            <div id="tabsContent"></div>
+        </div>
+
+        <div class="footer">
+            <p>© 2026 Samsung Electronics. All rights reserved. <span class="divider">|</span> Advanced Analytics Dashboard v1.0</p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // ===== FIREBASE CONFIGURATION =====
+            const firebaseConfig = {
+                apiKey: "AIzaSyBltxdfVfNzoWU9ZjRPD_ZA9qX6BdRmd90",
+                authDomain: "da-influencer.firebaseapp.com",
+                databaseURL: "https://da-influencer-default-rtdb.asia-southeast1.firebasedatabase.app",
+                projectId: "da-influencer",
+                storageBucket: "da-influencer.firebasestorage.app",
+                messagingSenderId: "850189140596",
+                appId: "1:850189140596:web:1f89afe0c4f326bb298721"
+            };
+
+            let db = null;
+            let isConnected = false;
+            let divisionsData = {
+                'GBM': [],
+                'SEA': [],
+                'SEUK': []
+            };
+            let filteredDivisionsData = {
+                'GBM': [],
+                'SEA': [],
+                'SEUK': []
+            };
+            const quarterOrder = ['25 1Q', '25 2Q', '25 3Q', '25 4Q', '26 1Q', '26 2Q', '26 3Q'];
+
+            const chartInstances = {};
+
+            try {
+                firebase.initializeApp(firebaseConfig);
+                db = firebase.database();
+
+                db.ref('.info/connected').on('value', (snapshot) => {
+                    isConnected = snapshot.val();
+                    updateConnectionStatus();
+                });
+
+                // Firebase에서 데이터 실시간 로드 (최신 batchId 기준)
+                Object.keys(divisionsData).forEach(subs => {
+                    db.ref(`influencer_data/${subs}`).on('value', (snapshot) => {
+                        const allData = snapshot.val();
+                        if (!allData) {
+                            divisionsData[subs] = [];
+                        } else {
+                            const dataArray = Object.values(allData);
+                            // 가장 최신 batchId 찾기
+                            const latestBatchId = dataArray.reduce((max, item) => {
+                                return (item.batchId || 0) > max ? (item.batchId || 0) : max;
+                            }, 0);
+                            // 최신 batchId에 해당하는 데이터만
+                            divisionsData[subs] = latestBatchId > 0
+                                ? dataArray.filter(item => item.batchId === latestBatchId)
+                                : dataArray;
+                        }
+                        console.log(`📊 ${subs} updated: ${divisionsData[subs].length} items`);
+                        applyQuarterFilter();
+                    });
+                });
+
+                // 동기화 신호 감지
+                db.ref('dashboard_sync').on('value', (snapshot) => {
+                    if (snapshot.val()) {
+                        console.log('🔄 Sync signal received');
+                        setTimeout(() => {
+                            applyQuarterFilter();
+                        }, 500);
+                    }
+                });
+            } catch (error) {
+                console.error('Firebase error:', error);
+            }
+
+            // Quarter 기간 필터링
+            function applyQuarterFilter() {
+                const startVal = document.getElementById('quarterStart') ? document.getElementById('quarterStart').value : '';
+                const endVal = document.getElementById('quarterEnd') ? document.getElementById('quarterEnd').value : '';
+                
+                // 현재 활성 탭 기억
+                const activeBtn = document.querySelector('.tab-button.active');
+                const activeTabName = activeBtn ? activeBtn.textContent : 'Overview';
+                
+                Object.keys(divisionsData).forEach(subs => {
+                    if (startVal === '' && endVal === '') {
+                        filteredDivisionsData[subs] = divisionsData[subs];
+                    } else {
+                        const startIdx = startVal ? quarterOrder.indexOf(startVal) : 0;
+                        const endIdx = endVal ? quarterOrder.indexOf(endVal) : quarterOrder.length - 1;
+                        
+                        if (startIdx === -1 || endIdx === -1) {
+                            filteredDivisionsData[subs] = [];
+                        } else {
+                            const validQuarters = quarterOrder.slice(Math.min(startIdx, endIdx), Math.max(startIdx, endIdx) + 1);
+                            filteredDivisionsData[subs] = divisionsData[subs].filter(item => 
+                                validQuarters.includes(item.quarter)
+                            );
+                        }
+                    }
+                });
+                
+                const filterInfo = document.getElementById('filterInfo');
+                if (startVal === '' && endVal === '') {
+                    filterInfo.textContent = '';
+                } else {
+                    const startText = startVal || '—';
+                    const endText = endVal || '—';
+                    const totalItems = Object.values(filteredDivisionsData).reduce((sum, arr) => sum + arr.length, 0);
+                    filterInfo.textContent = `📍 ${startText} ~ ${endText} (${totalItems} items)`;
+                }
+                
+                renderTabs();
+                
+                // 이전 활성 탭 복원
+                if (activeTabName !== 'Overview') {
+                    const btns = document.querySelectorAll('.tab-button');
+                    btns.forEach(btn => {
+                        if (btn.textContent === activeTabName) {
+                            btn.click();
+                        }
+                    });
+                }
+            }
+
+            window.filterByQuarterRange = function() {
+                applyQuarterFilter();
+            };
+
+            window.scrollToDashboard = function() {
+                const tabsContainer = document.getElementById('tabsContainer');
+                if (tabsContainer) {
+                    tabsContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    setTimeout(() => {
+                        const overviewBtn = document.querySelector('.tab-button');
+                        if (overviewBtn) overviewBtn.click();
+                    }, 500);
+                }
+            };
+
+            function updateConnectionStatus() {
+                const statusEl = document.getElementById('connectionStatus');
+                const statusText = document.getElementById('statusText');
+
+                if (isConnected) {
+                    statusEl.className = 'status connected';
+                    statusText.textContent = '🟢 Connected - Real-time Sync Active';
+                } else {
+                    statusEl.className = 'status disconnected';
+                    statusText.textContent = '🔴 Disconnected - Check Internet';
+                }
+            }
+
+            function renderTabs() {
+                const tabsContainer = document.getElementById('tabsContainer');
+                const tabsContent = document.getElementById('tabsContent');
+                
+                tabsContainer.innerHTML = '';
+                tabsContent.innerHTML = '';
+
+                // Overview 탭
+                const overviewBtn = document.createElement('button');
+                overviewBtn.className = 'tab-button active';
+                overviewBtn.textContent = '📊 Overview';
+                overviewBtn.onclick = () => switchTab('overview');
+                tabsContainer.appendChild(overviewBtn);
+
+                // Subs 탭
+                Object.keys(divisionsData).forEach(subs => {
+                    const btn = document.createElement('button');
+                    btn.className = 'tab-button';
+                    btn.textContent = subs;
+                    btn.onclick = () => switchTab(subs);
+                    tabsContainer.appendChild(btn);
+                });
+
+                // Overview 콘텐츠
+                const overviewContent = document.createElement('div');
+                overviewContent.className = 'tab-content active';
+                overviewContent.id = 'overview-content';
+                overviewContent.innerHTML = `
+                    <h2>📈 Overall Performance</h2>
+                    <div class="kpi-grid" id="overviewKPI"></div>
+                    <div id="overviewChartsArea"></div>
+                `;
+                tabsContent.appendChild(overviewContent);
+
+                // Subs 콘텐츠
+                Object.keys(divisionsData).forEach(subs => {
+                    const content = document.createElement('div');
+                    content.className = 'tab-content';
+                    content.id = `content-${subs}`;
+                    content.innerHTML = `
+                        <h2>${subs} - Detailed Analytics</h2>
+                        <div class="kpi-grid" id="kpi-${subs}"></div>
+                        <div class="charts-grid" id="charts-${subs}"></div>
+                        <div class="small-charts-grid" id="small-charts-${subs}"></div>
+                        <div class="table-card">
+                            <h3>📋 Top Performers</h3>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Influencer</th>
+                                        <th>Followers</th>
+                                        <th>Contents</th>
+                                        <th>Total Impressions</th>
+                                        <th>Avg Impression</th>
+                                        <th>ER %</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="table-${subs}"></tbody>
+                            </table>
+                        </div>
+                    `;
+                    tabsContent.appendChild(content);
+                });
+
+                loadOverview();
+                // 숨겨진 탭은 로드하지 않음 (switchTab에서 로드)
+            }
+
+            function switchTab(tabName) {
+                document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+                document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+
+                if (tabName === 'overview') {
+                    document.getElementById('overview-content').classList.add('active');
+                    document.querySelector('.tab-button').classList.add('active');
+                    loadOverview();
+                } else {
+                    document.getElementById(`content-${tabName}`).classList.add('active');
+                    event.target.classList.add('active');
+                    // 탭이 visible 된 후 차트 생성
+                    setTimeout(() => loadSubTab(tabName), 50);
+                }
+            }
+
+            function loadOverview() {
+                let allData = [];
+                Object.values(filteredDivisionsData).forEach(data => {
+                    allData = allData.concat(data);
+                });
+
+                if (allData.length === 0) return;
+
+                // ── KPI ──────────────────────────────────────────────
+                const uniqueInfluencers = new Set(allData.map(d => d.name)).size;
+                const totalContent = allData.length;
+                const totalImpressions = allData.reduce((sum, d) => sum + (parseInt(d.impression) || 0), 0);
+                const totalEngagements = allData.reduce((sum, d) => sum + (parseInt(d.engagement) || 0), 0);
+                const avgImpressions = totalContent > 0 ? Math.round(totalImpressions / totalContent) : 0;
+                const avgEngagements = totalContent > 0 ? Math.round(totalEngagements / totalContent) : 0;
+                const avgER = totalImpressions > 0 ? (totalEngagements / totalImpressions * 100) : 0;
+
+                document.getElementById('overviewKPI').innerHTML = `
+                    <div class="kpi-card"><div class="kpi-label">Total Subs</div><div class="kpi-value">${Object.keys(divisionsData).length}</div></div>
+                    <div class="kpi-card"><div class="kpi-label">Total Influencers</div><div class="kpi-value">${uniqueInfluencers}</div></div>
+                    <div class="kpi-card"><div class="kpi-label">Total Contents</div><div class="kpi-value">${totalContent}</div></div>
+                    <div class="kpi-card"><div class="kpi-label">Total Impressions</div><div class="kpi-value">${formatNumber(totalImpressions)}</div></div>
+                    <div class="kpi-card"><div class="kpi-label">Avg Impressions</div><div class="kpi-value">${formatNumber(avgImpressions)}</div></div>
+                    <div class="kpi-card"><div class="kpi-label">Total Engagements</div><div class="kpi-value">${formatNumber(totalEngagements)}</div></div>
+                    <div class="kpi-card"><div class="kpi-label">Avg Engagements</div><div class="kpi-value">${formatNumber(avgEngagements)}</div></div>
+                    <div class="kpi-card"><div class="kpi-label">Total ER</div><div class="kpi-value">${formatER(avgER)}</div></div>
+                `;
+
+                // ── Data Prep ────────────────────────────────────────
+                const quarterOrder = ['25 1Q','25 2Q','25 3Q','25 4Q','26 1Q','26 2Q','26 3Q'];
+                const COLORS = ['#1428a0','#ff9800','#4caf50','#e91e63','#00bcd4','#9c27b0','#ffeb3b','#2196f3'];
+
+                // Quarterly Avg Impression & ER
+                const qPerf = {};
+                allData.forEach(d => {
+                    const q = d.quarter;
+                    if (!qPerf[q]) qPerf[q] = { imp: 0, eng: 0, cnt: 0 };
+                    qPerf[q].imp += parseInt(d.impression) || 0;
+                    qPerf[q].eng += parseInt(d.engagement) || 0;
+                    qPerf[q].cnt++;
+                });
+                const qLabels = quarterOrder.filter(q => qPerf[q]);
+                const qAvgImp = qLabels.map(q => Math.round(qPerf[q].imp / qPerf[q].cnt));
+                const qER = qLabels.map(q => qPerf[q].imp > 0 ? +(qPerf[q].eng / qPerf[q].imp * 100).toFixed(2) : 0);
+
+                // Subs별 인플루언서/컨텐츠
+                const influencersBySubs = {};
+                const contentBySubs = {};
+                Object.entries(filteredDivisionsData).forEach(([subs, data]) => {
+                    influencersBySubs[subs] = new Set(data.map(d => d.name)).size;
+                    contentBySubs[subs] = data.length;
+                });
+
+                // Avg Performance by Subs (산점도)
+                const subsPerformance = [];
+                Object.entries(filteredDivisionsData).forEach(([subsName, data]) => {
+                    if (data.length === 0) return;
+                    const totalImp = data.reduce((sum, d) => sum + (parseInt(d.impression) || 0), 0);
+                    const totalEng = data.reduce((sum, d) => sum + (parseInt(d.engagement) || 0), 0);
+                    subsPerformance.push({
+                        name: subsName,
+                        avgImpression: Math.round(totalImp / data.length),
+                        er: totalImp > 0 ? +(totalEng / totalImp * 100).toFixed(2) : 0
+                    });
+                });
+
+                // Top Content by Subs
+                const topContents = [];
+                Object.entries(filteredDivisionsData).forEach(([subsName, data]) => {
+                    if (data.length === 0) return;
+                    const topContent = data.reduce((max, cur) =>
+                        (parseInt(cur.impression) || 0) > (parseInt(max.impression) || 0) ? cur : max
+                    );
+                    topContents.push({ subs: subsName, ...topContent });
+                });
+
+                // ── Build HTML (한 번에, 중복 방지) ───────────────────
+                const area = document.getElementById('overviewChartsArea');
+                area.innerHTML = `
+                    <!-- ROW 1: Quarterly Performance + Subs 비교 -->
+                    <div class="row-2col">
+                        <div class="chart-card">
+                            <h3>📈 Quarterly Avg Impression & ER (All Subs)</h3>
+                            <div class="chart-container"><canvas id="ovQuarterlyChart"></canvas></div>
+                        </div>
+                        <div class="chart-card">
+                            <h3>📊 Avg Performance by Subs (Impression vs ER)</h3>
+                            <div class="chart-container"><canvas id="ovSubsScatter"></canvas></div>
+                        </div>
+                    </div>
+                    <!-- ROW 2: Influencers + Content by Subs -->
+                    <div class="row-2col">
+                        <div class="chart-card">
+                            <h3>👥 Influencers by Subs</h3>
+                            <div class="chart-container"><canvas id="ovInfluencersChart"></canvas></div>
+                        </div>
+                        <div class="chart-card">
+                            <h3>📋 Contents by Subs</h3>
+                            <div class="chart-container"><canvas id="ovContentChart"></canvas></div>
+                        </div>
+                    </div>
+                    <!-- Top Content Table -->
+                    <div class="table-card" style="margin-top:20px;">
+                        <h3>🏆 Top Performing Content by Subs</h3>
+                        <div style="overflow-x:auto;">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Subs</th>
+                                        <th>Influencer</th>
+                                        <th>Product</th>
+                                        <th>Category</th>
+                                        <th>Platform</th>
+                                        <th>Impressions</th>
+                                        <th>Engagement</th>
+                                        <th>ER %</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ovTopContentTable"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+
+                // ── Render Charts ────────────────────────────────────
+                // 1. Quarterly Avg Impression (bar) + ER (line)
+                createDualAxisChartV2('ovQuarterlyChart', qLabels, qAvgImp, 'Avg Impression', '#1428a0', qER, 'ER %', '#ff9800');
+
+                // 2. Subs Scatter (Avg Impression vs ER)
+                createChart('ovSubsScatter', 'scatter', {
+                    datasets: [{
+                        label: 'Subs Performance',
+                        data: subsPerformance.map(d => ({ x: d.avgImpression, y: d.er })),
+                        backgroundColor: COLORS.slice(0, subsPerformance.length),
+                        pointRadius: 14,
+                        pointHoverRadius: 18
+                    }]
+                }, {
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'Avg Impression per Content' },
+                            ticks: { callback: function(value) { return formatNumber(Math.round(value)); } }
+                        },
+                        y: { title: { display: true, text: 'ER %' } }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(ctx) {
+                                    const s = subsPerformance[ctx.dataIndex];
+                                    return [s.name, 'Avg Imp: ' + formatNumber(s.avgImpression), 'ER: ' + s.er + '%'];
+                                }
+                            }
+                        }
+                    }
+                });
+
+                // 3. Influencers by Subs
+                createChart('ovInfluencersChart', 'bar', {
+                    labels: Object.keys(influencersBySubs),
+                    datasets: [{ label: 'Influencers', data: Object.values(influencersBySubs), backgroundColor: COLORS }]
+                });
+
+                // 4. Contents by Subs
+                createChart('ovContentChart', 'bar', {
+                    labels: Object.keys(contentBySubs),
+                    datasets: [{ label: 'Contents', data: Object.values(contentBySubs), backgroundColor: COLORS }]
+                });
+
+                // 5. Top Content Table (인플루언서 이름 → URL 링크)
+                const topTbody = document.getElementById('ovTopContentTable');
+                topTbody.innerHTML = topContents.map(c => {
+                    const imp = parseInt(c.impression) || 0;
+                    const eng = parseInt(c.engagement) || 0;
+                    const er = imp > 0 ? (eng / imp * 100) : 0;
+                    const nameCell = c.url
+                        ? `<a href="${c.url}" target="_blank" style="color:#1428a0;text-decoration:underline;font-weight:600;">${c.name}</a>`
+                        : c.name;
+                    return `<tr>
+                        <td><strong>${c.subs}</strong></td>
+                        <td>${nameCell}</td>
+                        <td>${c.product || '-'}</td>
+                        <td>${c.category || '-'}</td>
+                        <td>${c.platform || '-'}</td>
+                        <td>${formatNumber(imp)}</td>
+                        <td>${formatNumber(eng)}</td>
+                        <td>${formatER(er)}</td>
+                    </tr>`;
+                }).join('');
+            }
+
+            function loadSubTab(subsName) {
+                const data = filteredDivisionsData[subsName];
+                if (!data || data.length === 0) return;
+
+                // ── KPI ──────────────────────────────────────────────
+                const uniqueInfluencers = new Set(data.map(d => d.name)).size;
+                const totalImpressions  = data.reduce((s, d) => s + (parseInt(d.impression) || 0), 0);
+                const totalEngagements  = data.reduce((s, d) => s + (parseInt(d.engagement)  || 0), 0);
+                const avgImpressions    = data.length > 0 ? Math.round(totalImpressions / data.length) : 0;
+                const avgEngagements    = data.length > 0 ? Math.round(totalEngagements / data.length) : 0;
+                const avgER             = totalImpressions > 0 ? (totalEngagements / totalImpressions * 100) : 0;
+
+                document.getElementById(`kpi-${subsName}`).innerHTML = `
+                    <div class="kpi-card"><div class="kpi-label">Influencers</div><div class="kpi-value">${uniqueInfluencers}</div></div>
+                    <div class="kpi-card"><div class="kpi-label">Contents</div><div class="kpi-value">${data.length}</div></div>
+                    <div class="kpi-card"><div class="kpi-label">Total Impressions</div><div class="kpi-value">${formatNumber(totalImpressions)}</div></div>
+                    <div class="kpi-card"><div class="kpi-label">Avg Impressions</div><div class="kpi-value">${formatNumber(avgImpressions)}</div></div>
+                    <div class="kpi-card"><div class="kpi-label">Total Engagements</div><div class="kpi-value">${formatNumber(totalEngagements)}</div></div>
+                    <div class="kpi-card"><div class="kpi-label">Avg Engagements</div><div class="kpi-value">${formatNumber(avgEngagements)}</div></div>
+                    <div class="kpi-card"><div class="kpi-label">Total ER</div><div class="kpi-value">${formatER(avgER)}</div></div>
+                `;
+
+                // ── Quarter order ─────────────────────────────────────
+                const quarterOrder = ['25 1Q','25 2Q','25 3Q','25 4Q','26 1Q','26 2Q','26 3Q'];
+
+                // ── ROW 1  Left: Quarterly Avg Impression & ER ────────
+                const qPerf = {};
+                data.forEach(d => {
+                    const q = d.quarter;
+                    if (!qPerf[q]) qPerf[q] = { imp: 0, eng: 0, cnt: 0 };
+                    qPerf[q].imp += parseInt(d.impression) || 0;
+                    qPerf[q].eng += parseInt(d.engagement) || 0;
+                    qPerf[q].cnt++;
+                });
+                const qLabels   = quarterOrder.filter(q => qPerf[q]);
+                const qAvgImp   = qLabels.map(q => Math.round(qPerf[q].imp / qPerf[q].cnt));
+                const qER       = qLabels.map(q => qPerf[q].imp > 0 ? +(qPerf[q].eng / qPerf[q].imp * 100).toFixed(2) : 0);
+
+                // ── ROW 1  Right: Quarterly Content & Influencer count ─
+                const qCountPerf = {};
+                data.forEach(d => {
+                    const q = d.quarter;
+                    if (!qCountPerf[q]) qCountPerf[q] = { contents: 0, influencers: new Set() };
+                    qCountPerf[q].contents++;
+                    qCountPerf[q].influencers.add(d.name);
+                });
+                const qCLabels      = quarterOrder.filter(q => qCountPerf[q]);
+                const qContents     = qCLabels.map(q => qCountPerf[q].contents);
+                const qInfluencers  = qCLabels.map(q => qCountPerf[q].influencers.size);
+
+                // ── ROW 2  Left: Follower Tier Avg Impression & ER ────
+                const tiers = { '500K+': { imp:0, eng:0, cnt:0 }, '100K–500K': { imp:0, eng:0, cnt:0 }, '<100K': { imp:0, eng:0, cnt:0 } };
+                data.forEach(d => {
+                    const f = parseInt(d.followers) || 0;
+                    const t = f >= 500000 ? '500K+' : f >= 100000 ? '100K–500K' : '<100K';
+                    tiers[t].imp += parseInt(d.impression) || 0;
+                    tiers[t].eng += parseInt(d.engagement) || 0;
+                    tiers[t].cnt++;
+                });
+                const tierLabels  = ['500K+','100K–500K','<100K'];
+                const tierAvgImp  = tierLabels.map(t => tiers[t].cnt > 0 ? Math.round(tiers[t].imp / tiers[t].cnt) : 0);
+                const tierER      = tierLabels.map(t => tiers[t].imp > 0 ? +(tiers[t].eng / tiers[t].imp * 100).toFixed(2) : 0);
+
+                // ── ROW 2  Right: Follower Segment Pie ───────────────
+                const segCount = { '500K+': new Set(), '100K–500K': new Set(), '<100K': new Set() };
+                data.forEach(d => {
+                    const f = parseInt(d.followers) || 0;
+                    const t = f >= 500000 ? '500K+' : f >= 100000 ? '100K–500K' : '<100K';
+                    segCount[t].add(d.name);
+                });
+                const segValues = tierLabels.map(t => segCount[t].size);
+
+                // ── ROW 3  Distributions ──────────────────────────────
+                const productCount = {}, categoryCount = {}, platformImp = {};
+                data.forEach(d => {
+                    const products = (d.product || '').split(';').map(p => p.trim()).filter(Boolean);
+                    products.forEach(p => { productCount[p] = (productCount[p] || 0) + 1; });
+                    if (d.category) categoryCount[d.category] = (categoryCount[d.category] || 0) + 1;
+                    if (d.platform) platformImp[d.platform]   = (platformImp[d.platform]   || 0) + (parseInt(d.impression) || 0);
+                });
+
+                // ── Build HTML ────────────────────────────────────────
+                const chartsContainer = document.getElementById(`charts-${subsName}`);
+                chartsContainer.innerHTML = `
+                    <!-- ROW 1: 2열 -->
+                    <div class="row-2col">
+                        <div class="chart-card">
+                            <h3>📈 Quarterly Performance (Avg Impression & ER)</h3>
+                            <div class="chart-container"><canvas id="qPerfChart-${subsName}"></canvas></div>
+                        </div>
+                        <div class="chart-card">
+                            <h3>📊 Quarterly Volume (Contents & Influencers)</h3>
+                            <div class="chart-container"><canvas id="qCountChart-${subsName}"></canvas></div>
+                        </div>
+                    </div>
+                    <!-- ROW 2: 2fr + 1fr -->
+                    <div class="row-2col-wide">
+                        <div class="chart-card">
+                            <h3>👥 Follower Tier Performance (Avg Impression & ER)</h3>
+                            <div class="chart-container"><canvas id="tierPerfChart-${subsName}"></canvas></div>
+                        </div>
+                        <div class="chart-card">
+                            <h3>🥧 Influencer Follower Segments</h3>
+                            <div class="chart-container"><canvas id="segChart-${subsName}"></canvas></div>
+                        </div>
+                    </div>
+                    <!-- ROW 3: 3열 도넛 -->
+                    <div class="row-3col">
+                        <div class="chart-card">
+                            <h3>📦 Product Distribution</h3>
+                            <div class="chart-container"><canvas id="productDonut-${subsName}"></canvas></div>
+                        </div>
+                        <div class="chart-card">
+                            <h3>🏷️ Category Distribution</h3>
+                            <div class="chart-container"><canvas id="categoryDonut-${subsName}"></canvas></div>
+                        </div>
+                        <div class="chart-card">
+                            <h3>📱 Platform Impression Distribution</h3>
+                            <div class="chart-container"><canvas id="platformDonut-${subsName}"></canvas></div>
+                        </div>
+                    </div>
+                `;
+
+                // 기존 소형 차트 컨테이너 비우기
+                const small = document.getElementById(`small-charts-${subsName}`);
+                if (small) small.innerHTML = '';
+
+                const COLORS = ['#1428a0','#ff9800','#4caf50','#e91e63','#00bcd4','#9c27b0','#ffeb3b','#2196f3'];
+
+                // ROW 1 Left – Quarterly Avg Impression (bar) + ER (line, order: line on top)
+                createDualAxisChartV2(`qPerfChart-${subsName}`, qLabels, qAvgImp, 'Avg Impression', '#1428a0', qER, 'ER %', '#ff9800');
+
+                // ROW 1 Right – Quarterly Contents (bar) + Influencers (line)
+                createDualAxisChartV2(`qCountChart-${subsName}`, qCLabels, qContents, 'Contents', '#1428a0', qInfluencers, 'Influencers', '#4caf50');
+
+                // ROW 2 Left – Tier Avg Impression (bar) + ER (line)
+                createDualAxisChartV2(`tierPerfChart-${subsName}`, tierLabels, tierAvgImp, 'Avg Impression', '#1428a0', tierER, 'ER %', '#ff9800');
+
+                // ROW 2 Right – Segment Pie
+                createChart(`segChart-${subsName}`, 'pie', {
+                    labels: tierLabels,
+                    datasets: [{ data: segValues, backgroundColor: ['#1428a0','#ff9800','#4caf50'], hoverOffset: 8 }]
+                }, { plugins: { legend: { position: 'bottom' } } });
+
+                // ROW 3 – Donuts
+                createChart(`productDonut-${subsName}`, 'doughnut', {
+                    labels: Object.keys(productCount),
+                    datasets: [{ data: Object.values(productCount), backgroundColor: COLORS, hoverOffset: 8 }]
+                }, { plugins: { legend: { position: 'bottom' } }, cutout: '60%' });
+
+                createChart(`categoryDonut-${subsName}`, 'doughnut', {
+                    labels: Object.keys(categoryCount),
+                    datasets: [{ data: Object.values(categoryCount), backgroundColor: COLORS, hoverOffset: 8 }]
+                }, { plugins: { legend: { position: 'bottom' } }, cutout: '60%' });
+
+                createChart(`platformDonut-${subsName}`, 'doughnut', {
+                    labels: Object.keys(platformImp),
+                    datasets: [{ data: Object.values(platformImp), backgroundColor: COLORS, hoverOffset: 8 }]
+                }, { plugins: { legend: { position: 'bottom' } }, cutout: '60%' });
+
+                // Top Performers Table
+                const influencerStats = {};
+                data.forEach(d => {
+                    if (!influencerStats[d.name]) {
+                        influencerStats[d.name] = { name: d.name, followers: d.followers, contents: 0, impression: 0, engagement: 0 };
+                    }
+                    influencerStats[d.name].contents++;
+                    influencerStats[d.name].impression  += parseInt(d.impression) || 0;
+                    influencerStats[d.name].engagement  += parseInt(d.engagement) || 0;
+                });
+
+                const topInfluencers = Object.values(influencerStats).sort((a, b) => b.impression - a.impression).slice(0, 10);
+                const tbody = document.getElementById(`table-${subsName}`);
+                tbody.innerHTML = topInfluencers.map(inf => {
+                    const avgImp = Math.round(inf.impression / inf.contents);
+                    const er     = inf.impression > 0 ? (inf.engagement / inf.impression * 100) : 0;
+                    return `<tr>
+                        <td>${inf.name}</td>
+                        <td>${formatNumber(inf.followers)}</td>
+                        <td>${inf.contents}</td>
+                        <td>${formatNumber(inf.impression)}</td>
+                        <td>${formatNumber(avgImp)}</td>
+                        <td>${formatER(er)}</td>
+                    </tr>`;
+                }).join('');
+            }
+
+            // 이중축 차트 – 막대(bar) 뒤, 선(line) 앞
+            function createDualAxisChartV2(canvasId, labels, barData, barLabel, barColor, lineData, lineLabel, lineColor) {
+                const ctx = document.getElementById(canvasId)?.getContext('2d');
+                if (!ctx) return;
+                if (chartInstances[canvasId]) chartInstances[canvasId].destroy();
+
+                chartInstances[canvasId] = new Chart(ctx, {
+                    data: {
+                        labels,
+                        datasets: [
+                            {
+                                type: 'bar',
+                                label: barLabel,
+                                data: barData,
+                                backgroundColor: barColor + 'cc',
+                                borderColor: barColor,
+                                borderWidth: 1,
+                                yAxisID: 'y',
+                                order: 2
+                            },
+                            {
+                                type: 'line',
+                                label: lineLabel,
+                                data: lineData,
+                                borderColor: lineColor,
+                                backgroundColor: lineColor + '22',
+                                borderWidth: 2.5,
+                                pointBackgroundColor: lineColor,
+                                pointRadius: 5,
+                                tension: 0.4,
+                                yAxisID: 'y1',
+                                order: 1
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: { legend: { position: 'top' } },
+                        scales: {
+                            y:  { type: 'linear', position: 'left',  title: { display: true, text: barLabel  }, grid: { color: '#f0f0f0' }, ticks: { callback: function(v) { return formatNumber(Math.round(v)); } } },
+                            y1: { type: 'linear', position: 'right', title: { display: true, text: lineLabel }, grid: { drawOnChartArea: false }, ticks: { callback: function(v) { return v.toFixed(1) + '%'; } } }
+                        }
+                    }
+                });
+            }
+
+            // 일반 차트 (도넛, 파이 등)
+            function createChart(canvasId, type, data, options = {}) {
+                const ctx = document.getElementById(canvasId)?.getContext('2d');
+                if (!ctx) return;
+                if (chartInstances[canvasId]) chartInstances[canvasId].destroy();
+
+                chartInstances[canvasId] = new Chart(ctx, {
+                    type: type,
+                    data: data,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'top' } },
+                        ...options
+                    }
+                });
+            }
+
+            // 리사이즈 시 차트 정상 렌더링
+            let resizeTimer;
+            window.addEventListener('resize', () => {
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(() => {
+                    Object.values(chartInstances).forEach(chart => {
+                        if (chart) chart.resize();
+                    });
+                }, 250);
+            });
+
+            function formatNumber(num) {
+                if (!num) return '0';
+                num = parseInt(num) || 0;
+                
+                if (num >= 1000000) {
+                    return (num / 1000000).toFixed(1) + 'M';
+                } else if (num >= 1000) {
+                    return (num / 1000).toFixed(1) + 'K';
+                }
+                return num.toLocaleString();
+            }
+            
+            function formatER(num) {
+                return (num).toFixed(2) + '%';
+            }
+
+            // Initialize
+            window.addEventListener('load', () => {
+                updateConnectionStatus();
+                renderTabs();
+            });
+        });
+    </script>
+</body>
+</html>
