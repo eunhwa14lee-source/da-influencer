@@ -137,6 +137,7 @@
             grid-template-columns: 1fr 1fr;
             gap: 20px;
             margin-bottom: 20px;
+            overflow: hidden;
         }
 
         .row-2col-wide {
@@ -144,6 +145,7 @@
             grid-template-columns: 2fr 1fr;
             gap: 20px;
             margin-bottom: 20px;
+            overflow: hidden;
         }
 
         .row-3col {
@@ -151,6 +153,11 @@
             grid-template-columns: 1fr 1fr 1fr;
             gap: 20px;
             margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .row-2col > *, .row-2col-wide > *, .row-3col > * {
+            min-width: 0;
         }
 
         @media (max-width: 1100px) {
@@ -167,6 +174,8 @@
             padding: 20px;
             border-radius: 8px;
             border: 1px solid #e0e0e0;
+            overflow: hidden;
+            min-width: 0;
         }
 
         .chart-card h3 {
@@ -178,6 +187,7 @@
         .chart-container {
             position: relative;
             height: 300px;
+            width: 100%;
         }
 
         .small-charts-grid {
@@ -364,6 +374,10 @@
                 const startVal = document.getElementById('quarterStart') ? document.getElementById('quarterStart').value : '';
                 const endVal = document.getElementById('quarterEnd') ? document.getElementById('quarterEnd').value : '';
                 
+                // 현재 활성 탭 기억
+                const activeBtn = document.querySelector('.tab-button.active');
+                const activeTabName = activeBtn ? activeBtn.textContent : 'Overview';
+                
                 Object.keys(divisionsData).forEach(subs => {
                     if (startVal === '' && endVal === '') {
                         filteredDivisionsData[subs] = divisionsData[subs];
@@ -393,6 +407,16 @@
                 }
                 
                 renderTabs();
+                
+                // 이전 활성 탭 복원
+                if (activeTabName !== 'Overview') {
+                    const btns = document.querySelectorAll('.tab-button');
+                    btns.forEach(btn => {
+                        if (btn.textContent === activeTabName) {
+                            btn.click();
+                        }
+                    });
+                }
             }
 
             window.filterByQuarterRange = function() {
@@ -488,7 +512,7 @@
                 });
 
                 loadOverview();
-                Object.keys(filteredDivisionsData).forEach(subs => loadSubTab(subs));
+                // 숨겨진 탭은 로드하지 않음 (switchTab에서 로드)
             }
 
             function switchTab(tabName) {
@@ -502,7 +526,8 @@
                 } else {
                     document.getElementById(`content-${tabName}`).classList.add('active');
                     event.target.classList.add('active');
-                    loadSubTab(tabName);
+                    // 탭이 visible 된 후 차트 생성
+                    setTimeout(() => loadSubTab(tabName), 50);
                 }
             }
 
@@ -938,7 +963,7 @@
                                 borderColor: barColor,
                                 borderWidth: 1,
                                 yAxisID: 'y',
-                                order: 2          // 막대가 뒤에
+                                order: 2
                             },
                             {
                                 type: 'line',
@@ -951,7 +976,7 @@
                                 pointRadius: 5,
                                 tension: 0.4,
                                 yAxisID: 'y1',
-                                order: 1          // 선이 앞에
+                                order: 1
                             }
                         ]
                     },
@@ -967,6 +992,35 @@
                     }
                 });
             }
+
+            // 일반 차트 (도넛, 파이 등)
+            function createChart(canvasId, type, data, options = {}) {
+                const ctx = document.getElementById(canvasId)?.getContext('2d');
+                if (!ctx) return;
+                if (chartInstances[canvasId]) chartInstances[canvasId].destroy();
+
+                chartInstances[canvasId] = new Chart(ctx, {
+                    type: type,
+                    data: data,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'top' } },
+                        ...options
+                    }
+                });
+            }
+
+            // 리사이즈 시 차트 정상 렌더링
+            let resizeTimer;
+            window.addEventListener('resize', () => {
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(() => {
+                    Object.values(chartInstances).forEach(chart => {
+                        if (chart) chart.resize();
+                    });
+                }, 250);
+            });
 
             function formatNumber(num) {
                 if (!num) return '0';
